@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  finance-dashboard:
+    image: finance-dashboard:latest
+    container_name: finance-dashboard
+    ports:
+      - '${FINANCE_DASHBOARD_PORT:-1234}:1234'
+    env_file:
+      - ./.env
+    volumes:
+      - dashboard-data:/app/config
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:1234/healthz']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  dashboard-data:

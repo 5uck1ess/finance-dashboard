@@ -1,0 +1,5 @@
+node_modules
+css/tailwind.generated.css
+archive
+*.tar
+config/dashboard-snapshot.json

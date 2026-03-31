@@ -1,0 +1,17 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+*.md
+!PLAN.md
+.vscode
+.DS_Store
+*.log
+server/.env
+.env
+.env.*
+.husky
+.prettierrc
+.prettierignore
+eslint.config.js
+tests

@@ -1,0 +1,73 @@
+{
+  "stocks": [
+    "GOOGL",
+    "NVDA",
+    "AAPL",
+    "MSFT"
+  ],
+  "cryptos": [
+    "BTC",
+    "ETH",
+    "ADA"
+  ],
+  "etfs": [
+    "SPY",
+    "QQQ",
+    "VTI"
+  ],
+  "api": {
+    "financialModelingPrep": {
+      "apiKey": "YOUR_FMP_API_KEY",
+      "baseUrl": "https://financialmodelingprep.com/api/v3"
+    },
+    "finnhub": {
+      "apiKey": "YOUR_FINNHUB_API_KEY",
+      "baseUrl": "https://finnhub.io/api/v1"
+    },
+    "alphaVantage": {
+      "apiKey": "YOUR_ALPHA_VANTAGE_API_KEY",
+      "baseUrl": "https://www.alphavantage.co"
+    },
+    "coingecko": {
+      "apiKey": "YOUR_COINGECKO_API_KEY",
+      "baseUrl": "https://api.coingecko.com/api/v3"
+    },
+    "yahooFinance": {
+      "enabled": true,
+      "baseUrl": "https://query1.finance.yahoo.com/v8/finance/chart",
+      "corsProxy": null
+    }
+  },
+  "settings": {
+    "rateLimiting": {
+      "fmp": {
+        "requestsPerMinute": 250,
+        "delayBetweenRequests": 250
+      },
+      "finnhub": {
+        "requestsPerMinute": 60,
+        "delayBetweenRequests": 1000
+      },
+      "alphaVantage": {
+        "requestsPerMinute": 5,
+        "delayBetweenRequests": 12000
+      },
+      "coingecko": {
+        "requestsPerMinute": 30,
+        "delayBetweenRequests": 2000
+      },
+      "yahooFinance": {
+        "requestsPerMinute": 20,
+        "delayBetweenRequests": 3000
+      }
+    },
+    "cacheExpiry": {
+      "stocks": 300000,
+      "crypto": 60000
+    },
+    "autoRefreshSeconds": 300,
+    "snapshot": {
+      "file": "config/dashboard-snapshot.json"
+    }
+  }
+}

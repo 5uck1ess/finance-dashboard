@@ -1,0 +1,11 @@
+*.tar
+node_modules/
+.DS_Store
+.env
+.env.local
+.env.*.local
+archive/
+config/dashboard-snapshot.json
+config/stocks.json
+package-lock.json
+*.log

@@ -1,0 +1,23 @@
+{
+    "backendAvailable": true,
+    "stocks": [
+        "AAPL",
+        "MSFT",
+        "GOOGL",
+        "AMZN",
+        "TSLA"
+    ],
+    "cryptos": [
+        "BTC",
+        "ETH",
+        "SOL"
+    ],
+    "etfs": [
+        "SPY",
+        "QQQ"
+    ],
+    "settings": {
+        "refreshInterval": 60000,
+        "theme": "system"
+    }
+}
