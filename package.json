@@ -18,6 +18,7 @@
     "test:verbose": "jest --verbose",
     "docker:build": "bash scripts/docker-build.sh",
     "docker:build:load": "bash scripts/docker-build.sh --load",
+    "publish": "bash scripts/publish.sh",
     "prepare": "husky"
   },
   "keywords": [
