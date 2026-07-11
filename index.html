@@ -161,60 +161,49 @@
         overflow-x: hidden;
       }
     </style>
+    <link rel="stylesheet" href="/css/terminal.css" />
   </head>
 
   <body
     class="finance-shell bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100 min-h-screen transition-colors duration-200"
   >
-    <nav
-      class="glass-nav bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-50 border-b border-gray-200 dark:border-gray-700"
-    >
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-          <div class="flex items-center min-w-0">
-            <div class="flex-shrink-0 flex items-center text-blue-600 dark:text-blue-400">
-              <i class="fas fa-chart-line text-2xl mr-2"></i>
-              <span class="font-bold text-xl tracking-tight hidden xs:inline">Finance Dashboard</span>
+    <nav class="terminal-rail glass-nav" aria-label="Primary navigation">
+      <div class="terminal-rail-inner">
+        <div class="terminal-rail-layout">
+          <div class="terminal-rail-primary">
+            <div class="terminal-brand">
+              <span class="terminal-brand-mark"><i class="fas fa-chart-line" aria-hidden="true"></i></span>
+              <span class="terminal-brand-copy"><strong>FIN</strong><small>Terminal</small></span>
             </div>
-            <div class="ml-4 sm:ml-8 flex space-x-4 sm:space-x-8">
-              <a
-                href="/"
-                class="border-blue-500 text-gray-900 dark:text-white inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-              >
-                <i class="fas fa-home mr-1 sm:mr-2"></i><span class="hidden sm:inline"> Dashboard</span>
+            <div class="terminal-nav-links">
+              <a href="/" class="is-active">
+                <i class="fas fa-border-all" aria-hidden="true"></i><span>Overview</span><small>01</small>
               </a>
-              <a
-                href="/manage.html"
-                class="border-transparent text-gray-500 dark:text-gray-400 hover:border-gray-300 hover:text-gray-700 dark:hover:text-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors"
-              >
-                <i class="fas fa-cog mr-1 sm:mr-2"></i><span class="hidden sm:inline"> Manage</span>
+              <a href="/manage.html">
+                <i class="fas fa-sliders" aria-hidden="true"></i><span>Manage</span><small>02</small>
               </a>
             </div>
           </div>
-          <div class="flex items-center space-x-2 sm:space-x-4">
-            <button
-              id="copy-all-btn"
-              class="p-2 rounded-full text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 focus:outline-none transition-colors"
-              title="Copy all symbols and prices"
-              aria-label="Copy all symbols and prices"
-            >
-              <i class="fas fa-clipboard" aria-hidden="true"></i>
+          <div class="terminal-rail-actions">
+            <button id="copy-all-btn" title="Copy all symbols and prices" aria-label="Copy all symbols and prices">
+              <i class="fas fa-clipboard" aria-hidden="true"></i><span>Copy prices</span>
             </button>
-            <button
-              id="theme-toggle"
-              type="button"
-              class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition-colors"
-              title="Toggle theme"
-              aria-label="Toggle dark mode"
-            >
-              <i class="fas fa-moon" aria-hidden="true"></i>
+            <button id="theme-toggle" type="button" title="Toggle theme" aria-label="Toggle dark mode">
+              <i class="fas fa-moon" aria-hidden="true"></i><span>Theme</span>
             </button>
           </div>
         </div>
       </div>
     </nav>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <main class="terminal-main max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <header class="terminal-page-heading">
+        <div>
+          <p>Portfolio intelligence / live workspace</p>
+          <h1>Market overview</h1>
+        </div>
+        <div class="terminal-session"><span></span> Session connected</div>
+      </header>
       <!-- Header Controls -->
       <section class="hero-panel rounded-[1.2rem] sm:rounded-[2rem] px-4 py-3 sm:px-8 sm:py-3 mb-7 overflow-hidden">
         <div class="flex flex-col gap-2">
@@ -387,11 +376,11 @@
       </section>
     </main>
 
-    <footer class="max-w-7xl mx-auto px-4 pb-8 sm:px-6 lg:px-8">
+    <footer class="terminal-footer max-w-7xl mx-auto px-4 pb-8 sm:px-6 lg:px-8">
       <div
         class="flex flex-col gap-2 border-t border-slate-200/70 pt-5 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400 sm:flex-row sm:items-center sm:justify-between"
       >
-        <span>Finance Dashboard v6.0.0</span>
+        <span>Finance Dashboard v6.0.2</span>
         <span>&copy; 2026</span>
       </div>
     </footer>

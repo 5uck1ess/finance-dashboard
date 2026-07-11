@@ -1,8 +1,24 @@
 import { loadDashboardConfig } from './services/config-loader.js';
-import { getConfiguredSymbols, getInstrumentCategory } from './services/instrument-utils.js';
+import { applyCategoryOverrides, getConfiguredSymbols, getInstrumentCategory } from './services/instrument-utils.js';
 import { StorageService } from './services/storage.js';
 
 // Manage Page Functionality
+
+const BACKUP_VERSION = 1;
+const VALID_CATEGORIES = new Set(['stock', 'crypto', 'etf']);
+const VALID_SYMBOL = /^[A-Z0-9][A-Z0-9._^-]{0,19}$/;
+
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeSymbol(value) {
+  const symbol = String(value || '')
+    .trim()
+    .toUpperCase();
+  if (!VALID_SYMBOL.test(symbol)) throw new Error(`Invalid investment symbol: ${value}`);
+  return symbol;
+}
 
 class ManageInvestments {
   constructor() {
@@ -10,11 +26,22 @@ class ManageInvestments {
     this.selectedItems = new Set();
     this.storage = new StorageService();
     this.config = {};
-    this.init();
+    this.init().catch((error) => this.showInitializationError(error));
+  }
+
+  showInitializationError(error) {
+    console.error('Management page initialization failed:', error);
+    const main = document.querySelector('main');
+    if (!main) return;
+    main.insertAdjacentHTML(
+      'afterbegin',
+      '<div role="alert" class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-200">Management data could not be loaded. <button type="button" class="font-semibold underline" onclick="manageApp.init().catch((error) => manageApp.showInitializationError(error))">Retry</button></div>'
+    );
   }
 
   async init() {
-    this.config = await loadDashboardConfig(this.storage);
+    const config = await loadDashboardConfig(this.storage);
+    this.config = applyCategoryOverrides(config, this.storage.getCategories());
     this.loadInvestments();
     this.applyTheme();
     this.setupEventListeners();
@@ -35,11 +62,14 @@ class ManageInvestments {
       }
     }
 
-    this.investments = symbols.map((symbol) => ({
-      symbol,
-      category: getInstrumentCategory(symbol, this.config),
-      name: this.getStockName(symbol),
-    }));
+    this.investments = symbols.flatMap((rawSymbol) => {
+      try {
+        const symbol = normalizeSymbol(rawSymbol);
+        return [{ symbol, category: getInstrumentCategory(symbol, this.config), name: this.getStockName(symbol) }];
+      } catch {
+        return [];
+      }
+    });
   }
 
   getStockName(symbol) {
@@ -105,6 +135,7 @@ class ManageInvestments {
           'lastUpdated',
           'cachedDashboardData',
           'finance_dashboard_config',
+          'assetCategories',
         ];
         keys.forEach((key) => localStorage.removeItem(key));
         window.location.reload();
@@ -131,9 +162,13 @@ class ManageInvestments {
     const categorySelect = document.getElementById('category-select');
     const sharesInput = document.getElementById('shares-input');
     const costBasisInput = document.getElementById('cost-basis-input');
-    const symbol = input.value.trim().toUpperCase();
-
-    if (!symbol) return;
+    let symbol;
+    try {
+      symbol = normalizeSymbol(input.value);
+    } catch (error) {
+      alert(error.message);
+      return;
+    }
 
     if (this.investments.some((inv) => inv.symbol === symbol)) {
       alert(`${symbol} is already in your list`);
@@ -171,8 +206,37 @@ class ManageInvestments {
 
   removeInvestment(symbol) {
     this.investments = this.investments.filter((inv) => inv.symbol !== symbol);
+    const portfolio = this.storage.getPortfolio();
+    if (Object.prototype.hasOwnProperty.call(portfolio, symbol)) {
+      delete portfolio[symbol];
+      this.storage.savePortfolio(portfolio);
+    }
     this.saveInvestments();
     this.renderLists();
+  }
+
+  editInvestment(symbol) {
+    const portfolio = this.storage.getPortfolio();
+    const holding = portfolio[symbol] || { shares: 0, avgPrice: 0 };
+    const sharesValue = prompt(`Shares held for ${symbol}:`, String(holding.shares ?? 0));
+    if (sharesValue === null) return false;
+    const costBasisValue = prompt(
+      `Average cost basis per share for ${symbol}:`,
+      String(holding.avgPrice ?? holding.costBasis ?? 0)
+    );
+    if (costBasisValue === null) return false;
+
+    const shares = Number(sharesValue);
+    const avgPrice = Number(costBasisValue);
+    if (!Number.isFinite(shares) || shares <= 0 || !Number.isFinite(avgPrice) || avgPrice < 0) {
+      alert('Shares must be greater than zero and cost basis must be zero or greater.');
+      return false;
+    }
+
+    portfolio[symbol] = { shares, avgPrice };
+    this.storage.savePortfolio(portfolio);
+    this.renderLists();
+    return true;
   }
 
   importFile(file) {
@@ -181,42 +245,29 @@ class ManageInvestments {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        let newSymbols = [];
-        if (file.name.endsWith('.json')) {
-          const data = JSON.parse(e.target.result);
-          newSymbols = data.stocks || data;
-        } else {
-          newSymbols = e.target.result
-            .split('\n')
-            .map((line) => line.trim().toUpperCase())
-            .filter((line) => line.length > 0);
-        }
-
-        newSymbols.forEach((symbol) => {
-          if (!this.investments.some((inv) => inv.symbol === symbol)) {
-            this.investments.push({
-              symbol,
-              category: getInstrumentCategory(symbol, this.config),
-              name: this.getStockName(symbol),
-            });
-          }
-        });
-
-        this.saveInvestments();
-        this.renderLists();
+        const data = JSON.parse(e.target.result);
+        this.restoreBackup(data);
         document.getElementById('import-file').value = '';
       } catch (error) {
-        alert('Error parsing file: ' + error.message);
+        alert('Unable to restore backup: ' + error.message);
       }
     };
     reader.readAsText(file);
   }
 
   exportData() {
+    const symbols = this.investments.map((inv) => inv.symbol);
+    const trackedSymbols = new Set(symbols);
+    const portfolio = Object.fromEntries(
+      Object.entries(this.storage.getPortfolio()).filter(([symbol]) => trackedSymbols.has(symbol))
+    );
     const data = {
-      stocks: this.investments.map((inv) => inv.symbol),
-      portfolio: this.storage.getPortfolio(),
-      config: this.storage.getConfig(),
+      version: BACKUP_VERSION,
+      exportedAt: new Date().toISOString(),
+      symbols,
+      portfolio,
+      configuration: this.storage.getConfig(),
+      categories: Object.fromEntries(this.investments.map((inv) => [inv.symbol, inv.category])),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -229,9 +280,89 @@ class ManageInvestments {
     URL.revokeObjectURL(url);
   }
 
+  normalizeBackup(data) {
+    if (!isPlainObject(data)) throw new Error('Backup must be a JSON object.');
+    if (data.version !== undefined && data.version !== BACKUP_VERSION) {
+      throw new Error(`Unsupported backup version: ${data.version}`);
+    }
+
+    const rawSymbols = data.symbols ?? data.stocks;
+    if (!Array.isArray(rawSymbols)) throw new Error('Backup is missing its symbols list.');
+    const symbols = Array.from(new Set(rawSymbols.map((symbol) => normalizeSymbol(symbol))));
+    const trackedSymbols = new Set(symbols);
+    const portfolio = data.portfolio ?? {};
+    const configuration = data.configuration ?? data.config ?? {};
+    const categories = data.categories ?? {};
+    if (!isPlainObject(portfolio) || !isPlainObject(configuration) || !isPlainObject(categories)) {
+      throw new Error('Portfolio, configuration, and categories must be JSON objects.');
+    }
+
+    const normalizedPortfolio = {};
+    Object.entries(portfolio).forEach(([rawSymbol, holding]) => {
+      if (!isPlainObject(holding)) throw new Error(`Invalid portfolio record for ${rawSymbol}.`);
+      const symbol = normalizeSymbol(rawSymbol);
+      const shares = Number(holding.shares);
+      const avgPrice = Number(holding.avgPrice ?? holding.costBasis ?? 0);
+      if (!symbol || !Number.isFinite(shares) || shares <= 0 || !Number.isFinite(avgPrice) || avgPrice < 0) {
+        throw new Error(`Invalid portfolio values for ${rawSymbol}.`);
+      }
+      if (trackedSymbols.has(symbol)) normalizedPortfolio[symbol] = { shares, avgPrice };
+    });
+
+    const normalizedCategories = {};
+    Object.entries(categories).forEach(([rawSymbol, category]) => {
+      const symbol = normalizeSymbol(rawSymbol);
+      if (!symbol || !VALID_CATEGORIES.has(category)) throw new Error(`Invalid category for ${rawSymbol}.`);
+      normalizedCategories[symbol] = category;
+    });
+    symbols.forEach((symbol) => {
+      normalizedCategories[symbol] ||= getInstrumentCategory(
+        symbol,
+        applyCategoryOverrides(configuration, normalizedCategories)
+      );
+    });
+
+    return { symbols, portfolio: normalizedPortfolio, configuration, categories: normalizedCategories };
+  }
+
+  restoreBackup(data) {
+    const backup = this.normalizeBackup(data);
+    const keys = ['stocks', 'portfolio', 'finance_dashboard_config', 'assetCategories'];
+    const previous = Object.fromEntries(keys.map((key) => [key, localStorage.getItem(key)]));
+
+    try {
+      localStorage.setItem('stocks', JSON.stringify(backup.symbols));
+      this.storage.savePortfolio(backup.portfolio);
+      this.storage.saveConfig(backup.configuration);
+      this.storage.saveCategories(backup.categories);
+    } catch (error) {
+      try {
+        keys.forEach((key) => {
+          if (previous[key] === null) localStorage.removeItem(key);
+          else localStorage.setItem(key, previous[key]);
+        });
+      } catch (rollbackError) {
+        throw new Error(`Backup restore and recovery failed: ${error.message}; ${rollbackError.message}`);
+      }
+      throw new Error(`Backup restore failed and previous data was recovered: ${error.message}`);
+    }
+
+    this.config = applyCategoryOverrides(backup.configuration, backup.categories);
+    this.investments = backup.symbols.map((symbol) => ({
+      symbol,
+      category: backup.categories[symbol],
+      name: this.getStockName(symbol),
+    }));
+    this.renderLists();
+    return backup;
+  }
+
   saveInvestments() {
     const symbols = this.investments.map((inv) => inv.symbol);
     localStorage.setItem('stocks', JSON.stringify(symbols));
+    this.storage.saveCategories(
+      Object.fromEntries(this.investments.map((investment) => [investment.symbol, investment.category]))
+    );
   }
 
   renderLists() {
@@ -270,7 +401,7 @@ class ManageInvestments {
     container.innerHTML = items
       .map(
         (item) => `
-            <div class="investment-item group mb-2 flex items-center justify-between rounded-[1.25rem] border border-white/60 bg-white/80 p-4 shadow-sm backdrop-blur-md transition duration-200 hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700/80 dark:bg-slate-900/70" data-symbol="${item.symbol}">
+            <div class="investment-item terminal-investment group mb-2 flex items-center justify-between" data-symbol="${item.symbol}">
                 <div class="flex items-center space-x-3">
                     <input type="checkbox" class="item-checkbox h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700" data-symbol="${item.symbol}" />
                     <span class="drag-handle cursor-move rounded-full bg-slate-100 px-2 py-1 text-slate-400 transition hover:text-slate-700 dark:bg-slate-800 dark:hover:text-slate-300" title="Drag to reorder">
@@ -281,7 +412,10 @@ class ManageInvestments {
                         <span class="block max-w-[180px] truncate text-xs text-slate-500 dark:text-slate-400">${item.name}</span>
                     </div>
                 </div>
-                <div class="flex items-center">
+                <div class="flex items-center gap-1">
+                    <button class="edit-btn rounded-full bg-white/80 p-2 text-slate-400 opacity-0 transition hover:bg-blue-50 hover:text-blue-500 focus:opacity-100 group-hover:opacity-100 dark:bg-slate-800 dark:text-slate-500 dark:hover:bg-blue-500/10 dark:hover:text-blue-300" data-symbol="${item.symbol}" title="Edit shares and cost basis" aria-label="Edit ${item.symbol} holding">
+                        <i class="fas fa-pen"></i>
+                    </button>
                     <button class="delete-btn rounded-full bg-white/80 p-2 text-slate-400 opacity-0 transition hover:bg-rose-50 hover:text-rose-500 focus:opacity-100 group-hover:opacity-100 dark:bg-slate-800 dark:text-slate-500 dark:hover:bg-rose-500/10 dark:hover:text-rose-300" data-symbol="${item.symbol}" title="Delete">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -304,8 +438,15 @@ class ManageInvestments {
       });
     });
 
+    container.querySelectorAll('.edit-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.editInvestment(e.currentTarget.dataset.symbol);
+      });
+    });
+
     container.querySelectorAll('.item-checkbox').forEach((checkbox) => {
-      checkbox.addEventListener('change', (e) => {
+      checkbox.addEventListener('change', () => {
         // Selection logic
       });
     });
@@ -417,3 +558,5 @@ if (typeof window !== 'undefined' && window.location.pathname.includes('manage')
   manageApp = new ManageInvestments();
   window.manageApp = manageApp;
 }
+
+export { BACKUP_VERSION, ManageInvestments };

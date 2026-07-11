@@ -9,3 +9,4 @@ config/dashboard-snapshot.json
 config/stocks.json
 package-lock.json
 *.log
+.devkit/

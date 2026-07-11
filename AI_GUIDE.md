@@ -120,7 +120,7 @@ financeDashboard/
 **Investment Management**
 
 - Add investments via form input
-- File upload support (JSON, TXT, CSV)
+- Versioned JSON backup restore support
 - Auto-categorization (Stock/Crypto/ETF)
 - Manual category override
 - Checkbox selection for bulk operations
@@ -578,7 +578,7 @@ docker run -d -p 1234:1234 --restart unless-stopped finance-dashboard
 
 1. News integration for each stock
 2. Advanced charting (Chart.js/D3.js)
-3. Export to CSV/Excel functionality
+3. Spreadsheet export functionality
 4. Keyboard shortcuts implementation
 5. PWA (Progressive Web App) support
 
@@ -792,5 +792,5 @@ This Finance Dashboard is **production-ready** with:
 ---
 
 **Last Updated**: 2026-03-31
-**Version**: 6.0.0
+**Version**: 6.0.2
 **Status**: Production Ready — Open-Source Release

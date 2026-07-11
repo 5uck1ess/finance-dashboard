@@ -84,4 +84,4 @@ MIT License
 
 ---
 
-**Version**: 6.0.0 | **Last Updated**: March 2026
+**Version**: 6.0.2 | **Last Updated**: March 2026

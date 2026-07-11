@@ -15,6 +15,31 @@ export class UIManager {
     });
   }
 
+  showLoadingState() {
+    Object.entries(this.containers).forEach(([type, container]) => {
+      if (!container) return;
+      container.innerHTML = `
+        <div class="terminal-state col-span-full" role="status" aria-live="polite">
+          <i class="fas fa-circle-notch fa-spin mb-3 text-2xl text-blue-500"></i>
+          <p class="text-sm font-medium text-slate-600 dark:text-slate-300">Loading ${type} data…</p>
+        </div>`;
+    });
+  }
+
+  showLoadError() {
+    Object.values(this.containers).forEach((container) => {
+      if (!container) return;
+      container.innerHTML = `
+        <div class="terminal-state terminal-state-error col-span-full" role="alert">
+          <i class="fas fa-exclamation-circle mb-3 text-2xl text-rose-500"></i>
+          <p class="mb-4 text-sm font-medium text-rose-700 dark:text-rose-200">Dashboard data could not be loaded.</p>
+          <button type="button" class="rounded-full bg-rose-100 px-4 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-200 dark:bg-rose-900/40 dark:text-rose-300" onclick="app.refreshData({ forceRefresh: true }).then((loaded) => { if (!loaded) app.ui.showLoadError(); }).catch(() => app.ui.showLoadError())">
+            <i class="fas fa-redo mr-2 text-[0.65rem]"></i>Retry
+          </button>
+        </div>`;
+    });
+  }
+
   showEmptyState(type) {
     const container = this.containers[type];
     if (!container) return;
@@ -38,7 +63,7 @@ export class UIManager {
     };
 
     container.innerHTML = `
-            <div class="relative col-span-full overflow-hidden rounded-[1.6rem] border border-white/60 dark:border-slate-700/80 bg-white/80 dark:bg-slate-900/70 p-10 text-center shadow-lg backdrop-blur-md">
+            <div class="terminal-state terminal-empty relative col-span-full overflow-hidden">
                 <div class="absolute inset-x-0 top-0 h-24 bg-gradient-to-r ${accents[type] || accents.stocks} opacity-90"></div>
                 <div class="relative flex flex-col items-center justify-center text-slate-500 dark:text-slate-400">
                     <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/80 dark:bg-slate-800/85 shadow-sm">
@@ -58,7 +83,7 @@ export class UIManager {
 
     const card = document.createElement('div');
     card.className =
-      'group relative overflow-hidden rounded-[1.2rem] sm:rounded-[1.6rem] border border-white/60 dark:border-slate-700/80 bg-white/80 dark:bg-slate-900/70 p-5 sm:p-7 shadow-lg backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:shadow-xl';
+      'asset-card group relative overflow-hidden rounded-[1.2rem] sm:rounded-[1.6rem] border border-white/60 dark:border-slate-700/80 bg-white/80 dark:bg-slate-900/70 p-5 sm:p-7 shadow-lg backdrop-blur-md transition duration-300 hover:-translate-y-0.5 hover:shadow-xl';
     card.dataset.symbol = data.symbol;
     card.dataset.category = category;
     card.dataset.copyText = this.buildCopyText(data);
@@ -276,9 +301,12 @@ export class UIManager {
       if (sharesEl) sharesEl.textContent = `${portfolioMetrics.shares} shares`;
       if (valueEl) valueEl.textContent = `$${portfolioMetrics.totalValue.toFixed(2)}`;
       if (plEl) {
-        const plColor =
-          portfolioMetrics.profitLoss >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
-        plEl.className = `font-medium ${plColor}`;
+        plEl.classList.remove('text-green-600', 'dark:text-green-400', 'text-red-600', 'dark:text-red-400');
+        plEl.classList.add(
+          ...(portfolioMetrics.profitLoss >= 0
+            ? ['text-green-600', 'dark:text-green-400']
+            : ['text-red-600', 'dark:text-red-400'])
+        );
         plEl.textContent = `${portfolioMetrics.profitLoss >= 0 ? '+' : ''}$${portfolioMetrics.profitLoss.toFixed(2)} (${portfolioMetrics.profitLossPercent >= 0 ? '+' : ''}${portfolioMetrics.profitLossPercent.toFixed(2)}%)`;
       }
     }
@@ -325,7 +353,7 @@ export class UIManager {
 
     const card = document.createElement('div');
     card.className =
-      'relative overflow-hidden rounded-[1.6rem] border border-rose-200/70 dark:border-rose-900/60 bg-rose-50/90 dark:bg-rose-950/30 p-6 shadow-lg';
+      'asset-card asset-card-error relative overflow-hidden rounded-[1.6rem] border border-rose-200/70 dark:border-rose-900/60 bg-rose-50/90 dark:bg-rose-950/30 p-6 shadow-lg';
     card.dataset.symbol = symbol;
     card.innerHTML = `
             <div class="absolute inset-x-0 top-0 h-20 bg-gradient-to-r from-rose-400/25 to-orange-300/10"></div>

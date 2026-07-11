@@ -20,6 +20,7 @@ import {
 } from './services/dashboard-cache.js';
 import {
   getInstrumentCategory,
+  applyCategoryOverrides,
   groupSymbolsByCategory,
   isCryptoSymbol,
   isETFSymbol,
@@ -49,9 +50,19 @@ class FinanceDashboard {
     this.applyTheme();
 
     const snapshotLoaded = await this.hydrateFromSnapshot();
+    let hasInitialData = snapshotLoaded;
     if (!snapshotLoaded) {
       const cached = this.storage.getCachedData();
       this.renderCachedData(cached);
+      hasInitialData = this.hasCachedData(cached);
+    }
+
+    if (!hasInitialData) {
+      this.ui?.showLoadingState?.();
+      const loaded = await this.refreshData();
+      if (!loaded) {
+        this.ui?.showLoadError?.();
+      }
     }
 
     this.updateMarketStatus();
@@ -65,7 +76,8 @@ class FinanceDashboard {
   }
 
   async loadConfig() {
-    this.config = await loadDashboardConfig(this.storage);
+    const config = await loadDashboardConfig(this.storage);
+    this.config = applyCategoryOverrides(config, this.storage.getCategories());
   }
 
   buildApiKeys(baseConfig = {}, userConfig = {}) {
@@ -288,6 +300,12 @@ class FinanceDashboard {
 
   removeStock(symbol) {
     this.stocks = this.stocks.filter((s) => s !== symbol);
+    const portfolio = this.storage.getPortfolio();
+    if (Object.prototype.hasOwnProperty.call(portfolio, symbol)) {
+      delete portfolio[symbol];
+      this.storage.savePortfolio(portfolio);
+      this.portfolio = portfolio;
+    }
     this.saveStocks();
     this.ui.removeCardAnimated(symbol);
 
@@ -316,6 +334,7 @@ class FinanceDashboard {
     let stockSource = null;
     let cryptoSource = null;
     const renderedCounts = { stocks: 0, crypto: 0, etf: 0 };
+    let hasFreshResults = false;
 
     try {
       const stockSymbols = this.stocks.filter((s) => !this.stockService.isCrypto(s));
@@ -398,7 +417,7 @@ class FinanceDashboard {
       }
 
       const now = new Date();
-      const hasFreshResults =
+      hasFreshResults =
         cacheSnapshot.stocks.length > 0 || cacheSnapshot.etfs.length > 0 || cacheSnapshot.crypto.length > 0;
 
       if (hasFreshResults) {
@@ -420,6 +439,8 @@ class FinanceDashboard {
         button.disabled = false;
       });
     }
+
+    return hasFreshResults;
   }
 
   calculatePortfolioMetrics(symbol, currentPrice) {
@@ -484,9 +505,8 @@ class FinanceDashboard {
       this.setTheme(saved);
       return;
     }
-    // Auto-detect system preference on first visit
-    const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)')?.matches;
-    this.setTheme(prefersDark ? 'dark' : 'light');
+    // The terminal design defaults to its dark workspace; users can still opt into light mode.
+    this.setTheme('dark');
   }
 
   getCategory(symbol) {
@@ -575,7 +595,7 @@ class FinanceDashboard {
 
     let totalValue = 0;
     let totalCost = 0;
-    let bestPerformer = { symbol: null, profitLoss: -Infinity };
+    let bestPerformer = { symbol: null, returnPercent: -Infinity };
     const holdings = [];
 
     (this.stocks || []).forEach((symbol) => {
@@ -592,17 +612,20 @@ class FinanceDashboard {
       totalCost += metrics.totalCost;
       holdings.push({ symbol, value: metrics.totalValue });
 
-      if (metrics.profitLoss > bestPerformer.profitLoss) {
-        bestPerformer = { symbol, profitLoss: metrics.profitLoss };
+      const hasComparableReturn = metrics.totalCost > 0 && Number.isFinite(metrics.profitLossPercent);
+      if (hasComparableReturn && metrics.profitLossPercent > bestPerformer.returnPercent) {
+        bestPerformer = { symbol, returnPercent: metrics.profitLossPercent };
       }
     });
 
     if (totalValue === 0 && totalCost === 0) {
-      summaryEl.style.display = 'none';
+      summaryEl.classList?.add('hidden');
+      summaryEl.style?.removeProperty?.('display');
       return;
     }
 
-    summaryEl.style.display = 'block';
+    summaryEl.classList?.remove('hidden');
+    summaryEl.style?.removeProperty?.('display');
 
     const setText = (id, value, field = 'textContent') => {
       const el = document.getElementById(id);
@@ -619,16 +642,21 @@ class FinanceDashboard {
     const plEl = document.getElementById('total-pl');
     if (plEl) {
       const sign = totalPL >= 0 ? '+' : '';
-      plEl.innerHTML = `${sign}$${totalPL.toFixed(2)} (${totalPLPercent.toFixed(2)}%)`;
-      plEl.className = totalPL >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+      plEl.textContent = `${sign}$${totalPL.toFixed(2)} (${totalPLPercent.toFixed(2)}%)`;
+      plEl.classList?.remove('text-green-600', 'dark:text-green-400', 'text-red-600', 'dark:text-red-400');
+      plEl.classList?.add(
+        ...(totalPL >= 0 ? ['text-green-600', 'dark:text-green-400'] : ['text-red-600', 'dark:text-red-400'])
+      );
     }
 
     if (bestPerformer.symbol) {
       const bestEl = document.getElementById('best-performer');
       if (bestEl) {
-        const sign = bestPerformer.profitLoss >= 0 ? '+' : '';
-        bestEl.innerHTML = `${bestPerformer.symbol}: ${sign}$${bestPerformer.profitLoss.toFixed(2)}`;
+        const sign = bestPerformer.returnPercent >= 0 ? '+' : '';
+        bestEl.textContent = `${bestPerformer.symbol}: ${sign}${bestPerformer.returnPercent.toFixed(2)}%`;
       }
+    } else {
+      setText('best-performer', 'N/A');
     }
 
     this.renderDonutChart(holdings, totalValue);
@@ -847,13 +875,13 @@ class FinanceDashboard {
       this.lastUpdated = new Date(lastUpdated);
       this.storage.saveLastUpdated(this.lastUpdated);
       this.persistCacheSnapshot(mergedSnapshot, lastUpdated);
-      this.renderSnapshotData(mergedSnapshot);
+      const renderedCounts = this.renderSnapshotData(mergedSnapshot);
       this.ui?.updateSectionStatuses?.(fallbackStatuses);
       this.ui.updateSources({ stocks: stockSource, crypto: cryptoSource });
       this.updateAnalystPanelToggle();
       this.updateDataSourceIndicator({ stocks: stockSource, crypto: cryptoSource });
       this.updatePortfolioSummary();
-      return true;
+      return renderedCounts.stocks + renderedCounts.crypto + renderedCounts.etf > 0;
     } catch (error) {
       console.warn('Snapshot hydrate failed:', error.message);
       return false;
@@ -893,8 +921,10 @@ class FinanceDashboard {
 
   hasCachedData(cached) {
     if (!cached) return false;
-    const total = (cached.stocks?.length || 0) + (cached.crypto?.length || 0) + (cached.etfs?.length || 0);
-    return total > 0;
+    const tracked = new Set(this.stocks || []);
+    return [...(cached.stocks || []), ...(cached.crypto || []), ...(cached.etfs || [])].some((entry) =>
+      tracked.has(entry?.symbol)
+    );
   }
 
   ensureSectionCoverage(renderedCounts = { stocks: 0, crypto: 0, etf: 0 }) {
@@ -1018,7 +1048,10 @@ const isJest =
   globalThis.process.env.JEST_WORKER_ID !== undefined;
 if (typeof window !== 'undefined' && !isJest) {
   window.app = new FinanceDashboard();
-  window.app.init();
+  window.app.init().catch((error) => {
+    console.error('Dashboard initialization failed:', error);
+    window.app.ui?.showLoadError?.();
+  });
   // Expose for HTML onclick handlers
   window.FinanceDashboard = FinanceDashboard;
 }

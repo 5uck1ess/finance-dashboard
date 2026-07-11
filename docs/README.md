@@ -33,5 +33,5 @@ This documentation is organized by topic to help you quickly find what you need:
 
 ---
 
-**Version**: 6.0.0
+**Version**: 6.0.2
 **Last Updated**: March 2026

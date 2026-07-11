@@ -1,82 +1,96 @@
 export class StorageService {
-    constructor() {
-        this.CONFIG_KEY = 'finance_dashboard_config';
-        this.PORTFOLIO_KEY = 'portfolio';
-        this.MINIMIZED_SECTIONS_KEY = 'minimizedSections';
-        this.LAST_UPDATED_KEY = 'lastUpdated';
-        this.AUTO_REFRESH_KEY = 'autoRefreshSeconds';
-        this.CACHED_DATA_KEY = 'cachedDashboardData';
-    }
+  constructor() {
+    this.CONFIG_KEY = 'finance_dashboard_config';
+    this.PORTFOLIO_KEY = 'portfolio';
+    this.MINIMIZED_SECTIONS_KEY = 'minimizedSections';
+    this.LAST_UPDATED_KEY = 'lastUpdated';
+    this.AUTO_REFRESH_KEY = 'autoRefreshSeconds';
+    this.CACHED_DATA_KEY = 'cachedDashboardData';
+    this.CATEGORIES_KEY = 'assetCategories';
+  }
 
-    getConfig() {
-        try {
-            return JSON.parse(localStorage.getItem(this.CONFIG_KEY) || '{}');
-        } catch (e) {
-            console.error('Error parsing config:', e);
-            return {};
-        }
+  getConfig() {
+    try {
+      return JSON.parse(localStorage.getItem(this.CONFIG_KEY) || '{}');
+    } catch (e) {
+      console.error('Error parsing config:', e);
+      return {};
     }
+  }
 
-    saveConfig(config) {
-        localStorage.setItem(this.CONFIG_KEY, JSON.stringify(config));
-    }
+  saveConfig(config) {
+    localStorage.setItem(this.CONFIG_KEY, JSON.stringify(config));
+  }
 
-    getPortfolio() {
-        try {
-            return JSON.parse(localStorage.getItem(this.PORTFOLIO_KEY) || '{}');
-        } catch (e) {
-            console.error('Error parsing portfolio:', e);
-            return {};
-        }
+  getPortfolio() {
+    try {
+      return JSON.parse(localStorage.getItem(this.PORTFOLIO_KEY) || '{}');
+    } catch (e) {
+      console.error('Error parsing portfolio:', e);
+      return {};
     }
+  }
 
-    savePortfolio(portfolio) {
-        localStorage.setItem(this.PORTFOLIO_KEY, JSON.stringify(portfolio));
-    }
+  savePortfolio(portfolio) {
+    localStorage.setItem(this.PORTFOLIO_KEY, JSON.stringify(portfolio));
+  }
 
-    getMinimizedSections() {
-        try {
-            return JSON.parse(localStorage.getItem(this.MINIMIZED_SECTIONS_KEY) || '{}');
-        } catch (e) {
-            return {};
-        }
+  getCategories() {
+    try {
+      return JSON.parse(localStorage.getItem(this.CATEGORIES_KEY) || '{}');
+    } catch (e) {
+      console.error('Error parsing asset categories:', e);
+      return {};
     }
+  }
 
-    saveMinimizedSections(sections) {
-        localStorage.setItem(this.MINIMIZED_SECTIONS_KEY, JSON.stringify(sections));
-    }
+  saveCategories(categories) {
+    localStorage.setItem(this.CATEGORIES_KEY, JSON.stringify(categories));
+  }
 
-    getLastUpdated() {
-        return localStorage.getItem(this.LAST_UPDATED_KEY);
+  getMinimizedSections() {
+    try {
+      return JSON.parse(localStorage.getItem(this.MINIMIZED_SECTIONS_KEY) || '{}');
+    } catch {
+      return {};
     }
+  }
 
-    saveLastUpdated(date) {
-        const value = date instanceof Date ? date.toISOString() : date;
-        localStorage.setItem(this.LAST_UPDATED_KEY, value);
-    }
+  saveMinimizedSections(sections) {
+    localStorage.setItem(this.MINIMIZED_SECTIONS_KEY, JSON.stringify(sections));
+  }
 
-    getAutoRefresh() {
-        return localStorage.getItem(this.AUTO_REFRESH_KEY);
-    }
+  getLastUpdated() {
+    return localStorage.getItem(this.LAST_UPDATED_KEY);
+  }
 
-    saveAutoRefresh(value) {
-        localStorage.setItem(this.AUTO_REFRESH_KEY, value);
-    }
+  saveLastUpdated(date) {
+    const value = date instanceof Date ? date.toISOString() : date;
+    localStorage.setItem(this.LAST_UPDATED_KEY, value);
+  }
 
-    getCachedData() {
-        try {
-            return JSON.parse(localStorage.getItem(this.CACHED_DATA_KEY) || 'null');
-        } catch (e) {
-            console.error('Error parsing cached dashboard data:', e);
-            return null;
-        }
-    }
+  getAutoRefresh() {
+    return localStorage.getItem(this.AUTO_REFRESH_KEY);
+  }
 
-    saveCachedData(data) {
-        try {
-            localStorage.setItem(this.CACHED_DATA_KEY, JSON.stringify(data));
-        } catch (e) {
-            console.error('Unable to persist cached dashboard data:', e);
-        }
+  saveAutoRefresh(value) {
+    localStorage.setItem(this.AUTO_REFRESH_KEY, value);
+  }
+
+  getCachedData() {
+    try {
+      return JSON.parse(localStorage.getItem(this.CACHED_DATA_KEY) || 'null');
+    } catch (e) {
+      console.error('Error parsing cached dashboard data:', e);
+      return null;
     }
+  }
+
+  saveCachedData(data) {
+    try {
+      localStorage.setItem(this.CACHED_DATA_KEY, JSON.stringify(data));
+    } catch (e) {
+      console.error('Unable to persist cached dashboard data:', e);
+    }
+  }
 }
