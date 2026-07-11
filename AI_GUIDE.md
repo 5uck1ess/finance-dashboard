@@ -791,6 +791,6 @@ This Finance Dashboard is **production-ready** with:
 
 ---
 
-**Last Updated**: 2026-03-31
-**Version**: 6.0.2
+**Last Updated**: 2026-07-10
+**Version**: 7.0.0
 **Status**: Production Ready — Open-Source Release

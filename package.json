@@ -1,6 +1,6 @@
 {
   "name": "finance-dashboard",
-  "version": "6.0.2",
+  "version": "7.0.0",
   "description": "A modern finance dashboard for tracking stocks, ETFs, and cryptocurrencies",
   "main": "server/index.js",
   "scripts": {
